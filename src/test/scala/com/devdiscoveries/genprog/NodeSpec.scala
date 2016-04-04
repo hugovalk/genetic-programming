@@ -2,6 +2,7 @@ package com.devdiscoveries.genprog
 
 import org.scalatest.WordSpec
 import org.scalatest.MustMatchers
+import scala.util.Random
 
 class NodeSpec extends WordSpec with MustMatchers {
 
@@ -20,5 +21,12 @@ class NodeSpec extends WordSpec with MustMatchers {
       Param(4.1).compute mustEqual 4.1
     }
   }
+
+  val t = Node.generateRandomTree(params = List(Param(0)),
+    operations = List(add(_, _)),
+    valueGenerator = () => Random.nextInt)
+
+  def add(node1: Node[Int], node2: Node[Int]): Operation[Int] =
+    Operation[Int]((node1, node2), _ + _)
 
 }
