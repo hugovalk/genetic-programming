@@ -1,7 +1,7 @@
 package com.devdiscoveries.genprog
 
 import org.scalatest.WordSpec
-import org.scalatest.matchers.MustMatchers
+import org.scalatest.MustMatchers
 
 class NodeSpec extends WordSpec with MustMatchers {
 
