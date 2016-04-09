@@ -4,6 +4,10 @@ import scala.util.Random
 
 trait GeneticAlgorithm[Individual] {
 
+  def mutate(individual: Individual): Individual
+
+  def crossOver(parent1: Individual, parent2: Individual): Individual
+
   def evolve
 
 }
@@ -11,21 +15,35 @@ trait GeneticAlgorithm[Individual] {
 object Node {
   def generateRandomTree[A](params: Seq[Param[A]],
                             operations: Seq[(Node[A], Node[A]) => Operation[A]],
+                            maxDepth: Int = 10,
                             probParams: Double = 0.1,
                             probConst: Double = 0.4,
                             probOperation: Double = 0.5,
                             valueGenerator: () => A): Node[A] = {
     require(probParams + probConst + probOperation == 1.0)
-    val random = Random.nextDouble()
-    if (random < probParams)
-      params(Random.nextInt(params.size))
-    else if (random < probParams + probConst)
-      Const(valueGenerator())
-    else {
-      val n1 = generateRandomTree(params, operations, probParams, probConst, probOperation, valueGenerator)
-      val n2 = generateRandomTree(params, operations, probParams, probConst, probOperation, valueGenerator)
-      operations(Random.nextInt(operations.size))(n1, n2)
+
+    def createNode(depth: Int): Node[A] = {
+      val random = Random.nextDouble()
+      if (random < probParams)
+        params(Random.nextInt(params.size))
+      else if (random < probParams + probConst)
+        Const(valueGenerator())
+      else if (depth < maxDepth) {
+        val n1 = createNode(depth + 1)
+        val n2 = createNode(depth + 1)
+        operations(Random.nextInt(operations.size))(n1, n2)
+      } else
+        createNode(depth)
     }
+    createNode(1)
+  }
+
+  def depth[A](tree: Node[A]): Int = tree match {
+    case Operation(nodes, _) =>
+      val maxLeft = depth(nodes._1) + 1
+      val maxRight = depth(nodes._2) + 1
+      if (maxLeft > maxRight) maxLeft else maxRight
+    case _ => 1
   }
 }
 

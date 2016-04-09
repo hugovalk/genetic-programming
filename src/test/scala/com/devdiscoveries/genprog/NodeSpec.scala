@@ -22,11 +22,20 @@ class NodeSpec extends WordSpec with MustMatchers {
     }
   }
 
-  val t = Node.generateRandomTree(params = List(Param(0)),
-    operations = List(add),
-    valueGenerator = () => Random.nextInt)
-
   def add = (node1: Node[Int], node2: Node[Int]) =>
     Operation[Int]((node1, node2), _ + _)
+
+  "A randomly generated tree" should {
+    val tree = Node.generateRandomTree(params = List(Param(0)),
+      operations = List(add),
+      maxDepth = 10,
+      valueGenerator = () => Random.nextInt)
+    "have a depth >= 1" in {
+      Node.depth(tree) must be >= 1
+    }
+    "never be deeper than the maxDepth" in {
+      Node.depth(tree) must be <= 10
+    }
+  }
 
 }
