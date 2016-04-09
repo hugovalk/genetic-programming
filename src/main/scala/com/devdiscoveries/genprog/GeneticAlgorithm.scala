@@ -1,6 +1,7 @@
 package com.devdiscoveries.genprog
 
 import scala.util.Random
+import scala.math.Numeric
 
 trait GeneticAlgorithm[Individual] {
 
@@ -57,6 +58,22 @@ case class Param[A](var value: A) extends Node[A] {
 
 case class Const[A](value: A) extends Node[A] {
   override def compute = value
+}
+
+object Operation {
+  import Numeric.Implicits
+  def add[N](implicit n: Numeric[N]) = {
+    import n._
+    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), _ + _)
+  }
+  def subtract[N](implicit n: Numeric[N]) = {
+    import n._
+    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), _ - _)
+  }
+  def multiply[N](implicit n: Numeric[N]) = {
+    import n._
+    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), _ * _)
+  }
 }
 
 case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)

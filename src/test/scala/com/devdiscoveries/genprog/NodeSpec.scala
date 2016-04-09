@@ -22,12 +22,10 @@ class NodeSpec extends WordSpec with MustMatchers {
     }
   }
 
-  def add = (node1: Node[Int], node2: Node[Int]) =>
-    Operation[Int]((node1, node2), _ + _)
-
   "A randomly generated tree" should {
+    import Operation._
     val tree = Node.generateRandomTree(params = List(Param(0)),
-      operations = List(add),
+      operations = List(add[Int], subtract[Int], multiply[Int]),
       maxDepth = 10,
       valueGenerator = () => Random.nextInt)
     "have a depth >= 1" in {
@@ -35,6 +33,30 @@ class NodeSpec extends WordSpec with MustMatchers {
     }
     "never be deeper than the maxDepth" in {
       Node.depth(tree) must be <= 10
+    }
+  }
+
+  "The add operation" should {
+    import Operation._
+    "add two numbers" in {
+      val op = add[Int]
+      op(Const(2), Const(5)).compute mustEqual 7
+    }
+  }
+
+  "The subtract operation" should {
+    import Operation._
+    "subtract two numbers" in {
+      val op = subtract[Int]
+      op(Const(2), Const(5)).compute mustEqual -3
+    }
+  }
+
+  "The multiply operation" should {
+    import Operation._
+    "multiply two numbers" in {
+      val op = multiply[Int]
+      op(Const(2), Const(5)).compute mustEqual 10
     }
   }
 
