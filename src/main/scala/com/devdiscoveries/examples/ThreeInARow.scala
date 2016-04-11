@@ -23,8 +23,10 @@ case object Empty extends Value
 trait Player {
   def readMove: Int
   def color: Value
+  def isHuman: Boolean
 }
 case class ConsolePlayer(color: Value) extends Player {
+  override val isHuman = true
   override def readMove = {
     println(s"Player $color, enter your move (1 - 9):")
     StdIn.readInt()
@@ -35,8 +37,8 @@ class Game(playerOne: Player, playerTwo: Player) {
 
   var board: List[Value] = (1 to 9).toList.map(_ => Empty)
 
-  def hasHumanPlayer = playerOne.isInstanceOf[ConsolePlayer] ||
-    playerTwo.isInstanceOf[ConsolePlayer]
+  def hasHumanPlayer = playerOne.isHuman ||
+    playerTwo.isHuman
 
   def play: Value = {
     var currentPlayer = if (Random.nextFloat() < 0.5) playerOne else playerTwo
