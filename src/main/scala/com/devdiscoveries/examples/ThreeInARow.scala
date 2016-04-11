@@ -4,7 +4,9 @@ import scala.io.StdIn
 import scala.util.Random
 
 /**
-  * Created by hv01016 on 11-4-2016.
+  * Example game 'Three in a row". This game needs an integer
+  * input (between 1 - 9) and is therefore suitable as a genetic
+  * programming challenge.
   */
 object ThreeInARow extends App {
 
@@ -13,37 +15,46 @@ object ThreeInARow extends App {
   case object O extends Value
   case object Empty extends Value
 
+  trait Player {
+    def readMove: Int
+    def color: Value
+  }
+  case class ConsolePlayer(color: Value) extends Player {
+    override def readMove = {
+      println(s"Player $color, enter your move (1 - 9):")
+      StdIn.readInt()
+    }
+  }
+
   var board: List[Value] = (1 to 9).toList.map(_ => Empty)
 
-  printBoard
-  val winningPlayer = play
+  val winningPlayer = play(new ConsolePlayer(X), new ConsolePlayer(O))
   println(s"The winner is: $winningPlayer")
 
-  def play: Value = {
-    var currentPlayer = if (Random.nextFloat() < 0.5) X else O
+  def play(playerOne: Player, playerTwo: Player): Value = {
+    var currentPlayer = if (Random.nextFloat() < 0.5) playerOne else playerTwo
     def loop: Value = {
-      playConsoleMove(currentPlayer)
+      printBoard
+      playMove(currentPlayer)
       winner match {
-        case Some(v) => v
+        case Some(v) =>
+          printBoard
+          v
         case None =>
-          currentPlayer match {
-            case X => currentPlayer = O
-            case O => currentPlayer = X
-            case _ => throw new IllegalStateException("There must be a current player")
-          }
+          if (currentPlayer == playerOne)
+            currentPlayer = playerTwo
+          else
+            currentPlayer = playerOne
           loop
       }
     }
     loop
   }
 
-  def playConsoleMove(player: Value) = {
-    println(s"Player $player, enter your move (1 - 9):")
-    val choice = StdIn.readInt()
-    board = board.take(choice - 1) ++ (player :: board.drop(choice - 1).tail)
-    printBoard
+  def playMove(player: Player) = {
+    val move = player.readMove
+    board = board.take(move - 1) ++ (player.color :: board.drop(move - 1).tail)
   }
-
 
   def rows = for {
     i <- 0 to 8 by 3
