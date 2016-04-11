@@ -10,28 +10,35 @@ import scala.util.Random
   */
 object ThreeInARow extends App {
 
-  sealed trait Value
-  case object X extends Value
-  case object O extends Value
-  case object Empty extends Value
+  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
+  println(s"The winner is: $winningPlayer")
 
-  trait Player {
-    def readMove: Int
-    def color: Value
+}
+
+sealed trait Value
+case object X extends Value
+case object O extends Value
+case object Empty extends Value
+
+trait Player {
+  def readMove: Int
+  def color: Value
+}
+case class ConsolePlayer(color: Value) extends Player {
+  override def readMove = {
+    println(s"Player $color, enter your move (1 - 9):")
+    StdIn.readInt()
   }
-  case class ConsolePlayer(color: Value) extends Player {
-    override def readMove = {
-      println(s"Player $color, enter your move (1 - 9):")
-      StdIn.readInt()
-    }
-  }
+}
+
+class Game(playerOne: Player, playerTwo: Player) {
 
   var board: List[Value] = (1 to 9).toList.map(_ => Empty)
 
-  val winningPlayer = play(new ConsolePlayer(X), new ConsolePlayer(O))
-  println(s"The winner is: $winningPlayer")
+  def hasHumanPlayer = playerOne.isInstanceOf[ConsolePlayer] ||
+    playerTwo.isInstanceOf[ConsolePlayer]
 
-  def play(playerOne: Player, playerTwo: Player): Value = {
+  def play: Value = {
     var currentPlayer = if (Random.nextFloat() < 0.5) playerOne else playerTwo
     def loop: Value = {
       printBoard
@@ -72,8 +79,8 @@ object ThreeInARow extends App {
   def winner: Option[Value] = {
     def wins(v: Value): Boolean = {
       rows.exists(_.forall(_ == v)) ||
-      cols.exists(_.forall(_ == v)) ||
-      diagonals.exists(_.forall(_ == v))
+        cols.exists(_.forall(_ == v)) ||
+        diagonals.exists(_.forall(_ == v))
     }
     if (wins(X)) Some(X)
     else if (wins(O)) Some(O)
@@ -82,11 +89,13 @@ object ThreeInARow extends App {
   }
 
   def printBoard = {
-    rows.foreach { row =>
+    if (hasHumanPlayer) {
+      rows.foreach { row =>
+        printLine()
+        printRow(row)
+      }
       printLine()
-      printRow(row)
     }
-    printLine()
   }
 
   def printLine() = println("-------")
@@ -99,4 +108,5 @@ object ThreeInARow extends App {
     }
     println("|")
   }
+
 }
