@@ -1,5 +1,7 @@
 package com.devdiscoveries.examples
 
+import com.devdiscoveries.genprog.{Operation, Param, Node}
+
 import scala.io.StdIn
 import scala.util.Random
 
@@ -9,10 +11,16 @@ import scala.util.Random
   * programming challenge.
   */
 object ThreeInARow extends App {
-
-  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
+  //val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
+  import Operation._
+  val tree =
+    Node.generateRandomTree[Int](params = List(Param("0"),
+    Param("1"), Param("2"), Param("3"), Param("4"),
+    Param("5"), Param("6"), Param("7"), Param("8")),
+    operations = List(add[Int], subtract[Int], multiply[Int]),
+    valueGenerator = () => Random.nextInt)
+  val winningPlayer = new Game(new ConsolePlayer(X), new GPPlayer(O,tree)).play
   println(s"The winner is: $winningPlayer")
-
 }
 
 sealed trait Value
@@ -21,16 +29,36 @@ case object O extends Value
 case object Empty extends Value
 
 trait Player {
-  def readMove: Int
+  def readMove(board: List[Value]): Int
   def color: Value
   def isHuman: Boolean
 }
+
 case class ConsolePlayer(color: Value) extends Player {
   override val isHuman = true
-  override def readMove = {
+
+  override def readMove(board: List[Value]) = {
     println(s"Player $color, enter your move (1 - 9):")
     StdIn.readInt()
   }
+}
+
+case class GPPlayer(color: Value, tree: Node[Int]) extends Player {
+  override val isHuman = false
+
+  override def readMove(board: List[Value]) = {
+    val params = board.zipWithIndex.map{ e => e._1 match {
+      case Empty => (e._2.toString, 0)
+      case v =>
+        if (v == color)
+          (e._2.toString, 1)
+        else
+          (e._2.toString, -1)
+    }
+    }.toMap
+    tree.compute(params) % 9 + 1
+  }
+
 }
 
 class Game(playerOne: Player, playerTwo: Player) {
@@ -61,7 +89,7 @@ class Game(playerOne: Player, playerTwo: Player) {
   }
 
   def playMove(player: Player) = {
-    val move = player.readMove
+    val move = player.readMove(board)
     board = board.take(move - 1) ++ (player.color :: board.drop(move - 1).tail)
   }
 
@@ -103,7 +131,7 @@ class Game(playerOne: Player, playerTwo: Player) {
   def printLine() = println("-------")
 
   def printRow(row: Seq[Value]) = {
-    row.foreach{
+    row.foreach {
       case X => print("|X")
       case O => print("|O")
       case Empty => print("| ")

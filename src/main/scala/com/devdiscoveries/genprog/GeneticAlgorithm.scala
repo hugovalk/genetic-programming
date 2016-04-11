@@ -49,15 +49,19 @@ object Node {
 }
 
 sealed trait Node[A] {
-  def compute: A
+  def compute(params: Map[String, A]): A
 }
 
-case class Param[A](var value: A) extends Node[A] {
-  override def compute = value
+case class Param[A](name: String) extends Node[A] {
+  override def compute(params: Map[String, A]): A =
+    params.find(_._1 == name) match {
+      case Some(p) => p._2
+      case None => throw new IllegalArgumentException("This parameter is not in the list.")
+    }
 }
 
 case class Const[A](value: A) extends Node[A] {
-  override def compute = value
+  override def compute(params: Map[String, A]) = value
 }
 
 object Operation {
@@ -77,7 +81,7 @@ object Operation {
 
 case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)
     extends Node[A] {
-  override def compute = f(nodes._1.compute, nodes._2.compute)
+  override def compute(params: Map[String, A]) = f(nodes._1.compute(params), nodes._2.compute(params))
 }
 
 trait GeneticProgrammingInterpreter extends GeneticAlgorithm[Node[Int]] {
