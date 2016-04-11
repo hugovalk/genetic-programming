@@ -61,7 +61,6 @@ case class Const[A](value: A) extends Node[A] {
 }
 
 object Operation {
-  import Numeric.Implicits
   def add[N](implicit n: Numeric[N]) = {
     import n._
     (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), _ + _)
