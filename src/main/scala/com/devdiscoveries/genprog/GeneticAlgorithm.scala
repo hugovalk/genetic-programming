@@ -77,6 +77,10 @@ object Operation {
     import n._
     (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), _ * _)
   }
+  def greaterThan[N](implicit n: Numeric[N]) = {
+    import n._
+    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), (n1,n2) => if (n1.toDouble() > n2.toDouble()) n1 else n2)
+  }
 }
 
 case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)

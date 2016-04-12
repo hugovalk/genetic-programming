@@ -11,13 +11,13 @@ import scala.util.Random
   * programming challenge.
   */
 object ThreeInARow extends App {
-  //val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
+//  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
   import Operation._
   val tree =
     Node.generateRandomTree[Int](params = List(Param("0"),
     Param("1"), Param("2"), Param("3"), Param("4"),
     Param("5"), Param("6"), Param("7"), Param("8")),
-    operations = List(add[Int], subtract[Int], multiply[Int]),
+    operations = List(add[Int], subtract[Int], multiply[Int], greaterThan[Int]),
     valueGenerator = () => Random.nextInt)
   val winningPlayer = new Game(new ConsolePlayer(X), new GPPlayer(O,tree)).play
   println(s"The winner is: $winningPlayer")
@@ -56,7 +56,7 @@ case class GPPlayer(color: Value, tree: Node[Int]) extends Player {
           (e._2.toString, -1)
     }
     }.toMap
-    tree.compute(params) % 9 + 1
+    Math.abs(tree.compute(params)) % 9 + 1
   }
 
 }
@@ -72,25 +72,36 @@ class Game(playerOne: Player, playerTwo: Player) {
     var currentPlayer = if (Random.nextFloat() < 0.5) playerOne else playerTwo
     def loop: Value = {
       printBoard
-      playMove(currentPlayer)
-      winner match {
-        case Some(v) =>
-          printBoard
-          v
-        case None =>
-          if (currentPlayer == playerOne)
-            currentPlayer = playerTwo
-          else
-            currentPlayer = playerOne
-          loop
+      if (playMove(currentPlayer)) {
+        winner match {
+          case Some(v) =>
+            printBoard
+            v
+          case None =>
+            currentPlayer = otherPlayer(currentPlayer)
+            loop
+        }
+      } else {
+        otherPlayer(currentPlayer).color
       }
     }
     loop
   }
 
-  def playMove(player: Player) = {
+  def otherPlayer(currentPlayer: Player) = {
+    if (currentPlayer == playerOne)
+      playerTwo
+    else
+      playerOne
+  }
+
+  def playMove(player: Player): Boolean = {
     val move = player.readMove(board)
-    board = board.take(move - 1) ++ (player.color :: board.drop(move - 1).tail)
+    if (board(move - 1) != Empty) false
+    else {
+      board = board.take(move - 1) ++ (player.color :: board.drop(move - 1).tail)
+      true
+    }
   }
 
   def rows = for {
@@ -121,14 +132,14 @@ class Game(playerOne: Player, playerTwo: Player) {
   def printBoard = {
     if (hasHumanPlayer) {
       rows.foreach { row =>
-        printLine()
+        printLine
         printRow(row)
       }
-      printLine()
+      printLine
     }
   }
 
-  def printLine() = println("-------")
+  def printLine = println("-------")
 
   def printRow(row: Seq[Value]) = {
     row.foreach {
