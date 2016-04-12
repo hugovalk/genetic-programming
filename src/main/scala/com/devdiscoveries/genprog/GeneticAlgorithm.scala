@@ -6,12 +6,49 @@ import scala.util.Random
 import scala.math.Numeric
 
 trait GeneticAlgorithm[Individual] {
+  /** Absolute number. 0 is perfect fitness */
+  type Fitness = Double
+  type FitnessFunction = Individual => Fitness
+  type Population = Seq[Individual]
+  type RankedPopulation = Seq[(Individual, Fitness)]
 
   def mutate(individual: Individual): Individual
 
   def crossOver(parent1: Individual, parent2: Individual): Individual
 
-  def evolve = ???
+  def fitnessFunction: FitnessFunction
+
+  def evolve(initialPopulation: Population, numberOfGenerations: Int = 100): Population =
+    (1 to numberOfGenerations).foldLeft(initialPopulation)((x, y) => evolveNewGeneration(x))
+
+  def evolveNewGeneration(population: Population): Population = {
+    val fitnesses = population.map(fitnessFunction)
+    val sumOfFitnesses = fitnesses.sum
+    val normalizedFitnesses = fitnesses.map(_ / sumOfFitnesses)
+    val normalizedPopulation = population.zip(normalizedFitnesses)
+    val selectedParents = truncationParentSelection(normalizedPopulation)
+    val elite = selectElite(normalizedPopulation).map(_._1)
+    elite ++ (for {
+      i <- elite.size until population.length
+    } yield breed(selectedParents))
+  }
+
+  def breed(selectedParents: RankedPopulation): Individual = {
+    val parent1 = selectedParents(Random.nextInt(selectedParents.size))._1
+    val parent2 = selectedParents(Random.nextInt(selectedParents.size))._1
+    val child = crossOver(parent1, parent2)
+    if (Random.nextDouble() < 0.01)
+      mutate(child)
+    else
+      child
+  }
+
+  def selectElite(population: RankedPopulation): RankedPopulation =
+    population.sortBy(_._2).take(3)
+
+  def truncationParentSelection(population: RankedPopulation): RankedPopulation =
+    population.sortBy(_._2).take(population.length / 3)
+
 
 }
 
