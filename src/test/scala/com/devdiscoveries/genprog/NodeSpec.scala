@@ -1,5 +1,6 @@
 package com.devdiscoveries.genprog
 
+import com.devdiscoveries.genprog.Operation._
 import org.scalatest.WordSpec
 import org.scalatest.MustMatchers
 import scala.util.{Failure, Success, Try, Random}
@@ -66,5 +67,42 @@ class NodeSpec extends WordSpec with MustMatchers {
       op(Const(2), Const(5)).compute(Map()) mustEqual 10
     }
   }
+
+  "The length" should {
+    "be 1 for a constant" in {
+      Const(4).length mustEqual 1
+    }
+    "be 1 for a parameter" in {
+      Param("test").length mustEqual 1
+    }
+    "be 3 for an operation" in {
+      multiply[Int].apply(Const(1), Const(1)).length mustEqual 3
+    }
+    "be 5 for a nested operation" in {
+      multiply[Int].apply(add[Int].apply(Const(1), Const(1)), Const(1)).length mustEqual 5
+    }
+  }
+
+  "The childAtIndex method" should {
+    "return the root at index 0" in {
+      Const(1).childAtIndex(0) mustEqual Const(1)
+    }
+    "throw an IndexOutOfBoundsException for index > 0 in constants" in {
+      Try{Const(1).childAtIndex(1)} match {
+        case Success(_) => fail()
+        case Failure(t) => t.asInstanceOf[IndexOutOfBoundsException]
+      }
+    }
+    "return left child of an operation" in {
+      add[Int].apply(Const(1), Const(2)).childAtIndex(1) mustEqual Const(1)
+    }
+    "return right child of an operation" in {
+      add[Int].apply(Const(1), Const(2)).childAtIndex(2) mustEqual Const(2)
+    }
+  }
+
+
+
+
 
 }

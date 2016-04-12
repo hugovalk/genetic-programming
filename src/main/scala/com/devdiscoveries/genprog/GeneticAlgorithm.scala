@@ -1,5 +1,7 @@
 package com.devdiscoveries.genprog
 
+import com.devdiscoveries.genprog.Operation._
+
 import scala.util.Random
 import scala.math.Numeric
 
@@ -9,7 +11,7 @@ trait GeneticAlgorithm[Individual] {
 
   def crossOver(parent1: Individual, parent2: Individual): Individual
 
-  def evolve
+  def evolve = ???
 
 }
 
@@ -50,6 +52,36 @@ object Node {
 
 sealed trait Node[A] {
   def compute(params: Map[String, A]): A
+
+  def children: Seq[Node[A]] = Seq()
+
+  def length: Int
+
+  def replaceAt(index: Int, replacement: Node[A]): Node[A] = {
+    if (index == 0)
+      replacement
+    else
+      this match {
+        case Operation((left, right), f) =>
+          val childIndex = index - 1
+          if (childIndex < left.length) Operation((left.replaceAt(childIndex, replacement), right), f)
+          else Operation((left, right.replaceAt(childIndex - left.length , replacement)), f)
+        case _ => throw new IndexOutOfBoundsException(index.toString)
+      }
+  }
+
+  def childAtIndex(index: Int): Node[A] = {
+    if (index == 0)
+      this
+    else
+      this match {
+        case Operation((left, right), f) =>
+          val childIndex = index - 1
+          if (childIndex < left.length) left.childAtIndex(childIndex)
+          else right.childAtIndex(childIndex - left.length)
+        case _ => throw new IndexOutOfBoundsException(index.toString)
+      }
+  }
 }
 
 case class Param[A](name: String) extends Node[A] {
@@ -58,10 +90,12 @@ case class Param[A](name: String) extends Node[A] {
       case Some(p) => p._2
       case None => throw new IllegalArgumentException("This parameter is not in the list.")
     }
+  override def length = 1
 }
 
 case class Const[A](value: A) extends Node[A] {
   override def compute(params: Map[String, A]) = value
+  override def length = 1
 }
 
 object Operation {
@@ -86,9 +120,25 @@ object Operation {
 case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)
     extends Node[A] {
   override def compute(params: Map[String, A]) = f(nodes._1.compute(params), nodes._2.compute(params))
+
+  override def children: Seq[Node[A]] = Seq(nodes._1, nodes._2)
+
+  override def length = 1 + nodes._1.length + nodes._2.length
 }
 
-trait GeneticProgrammingInterpreter extends GeneticAlgorithm[Node[Int]] {
+trait GeneticProgrammingInterpreter[A] extends GeneticAlgorithm[Node[A]] {
 
+  def generateTree: Node[A]
+
+  override def mutate(root: Node[A]): Node[A] = {
+    root.replaceAt(Random.nextInt(root.length), generateTree)
+  }
+
+  override def crossOver(parent1: Node[A], parent2: Node[A]): Node[A] = {
+    val replacement = parent2.childAtIndex(Random.nextInt(parent2.length))
+    parent1.replaceAt(Random.nextInt(parent1.length), replacement)
+  }
 }
+
+
 
