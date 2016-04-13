@@ -18,8 +18,21 @@ trait GeneticAlgorithm[Individual] {
 
   def fitnessFunction: FitnessFunction
 
-  def evolve(initialPopulation: Population, numberOfGenerations: Int = 100): Population =
-    (1 to numberOfGenerations).foldLeft(initialPopulation)((x, y) => evolveNewGeneration(x))
+  def generateRandomIndividual: Individual
+
+  private var curPopulation: Population = Seq()
+
+  def currentPopulation = curPopulation
+
+  def evolve(populationSize: Int, numberOfGenerations: Int = 100): Population = {
+    val initialPopulation: Population = (1 to numberOfGenerations).map(_ => generateRandomIndividual)
+    (1 to numberOfGenerations).foldLeft(initialPopulation){(x, y) =>
+      println(s"Evolving generation $y")
+      val newPopulation = evolveNewGeneration(x)
+      curPopulation = newPopulation
+      newPopulation
+    }
+  }
 
   def evolveNewGeneration(population: Population): Population = {
     val fitnesses = population.map(fitnessFunction)
@@ -164,6 +177,8 @@ case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)
 }
 
 trait GeneticProgrammingInterpreter[A] extends GeneticAlgorithm[Node[A]] {
+
+  override def generateRandomIndividual = generateTree
 
   def generateTree: Node[A]
 

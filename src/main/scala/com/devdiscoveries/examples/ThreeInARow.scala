@@ -1,6 +1,7 @@
 package com.devdiscoveries.examples
 
-import com.devdiscoveries.genprog.{Operation, Param, Node}
+import com.devdiscoveries.genprog.Operation._
+import com.devdiscoveries.genprog.{GeneticProgrammingInterpreter, Operation, Param, Node}
 
 import scala.io.StdIn
 import scala.util.Random
@@ -11,26 +12,54 @@ import scala.util.Random
   * programming challenge.
   */
 object ThreeInARow extends App {
-//  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
+  //  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
   import Operation._
+
   val tree =
     Node.generateRandomTree[Int](params = List(Param("0"),
+      Param("1"), Param("2"), Param("3"), Param("4"),
+      Param("5"), Param("6"), Param("7"), Param("8")),
+      operations = List(add[Int], subtract[Int], multiply[Int], greaterThan[Int]),
+      valueGenerator = () => Random.nextInt)
+  val winningPlayer = new Game(new ConsolePlayer(X), new GPPlayer(O, tree)).play
+  println(s"The winner is: $winningPlayer")
+}
+
+class ThreeInARowGPAlgorithm extends GeneticProgrammingInterpreter[Int] {
+  override def generateTree: Node[Int] = Node.generateRandomTree[Int](params = List(Param("0"),
     Param("1"), Param("2"), Param("3"), Param("4"),
     Param("5"), Param("6"), Param("7"), Param("8")),
     operations = List(add[Int], subtract[Int], multiply[Int], greaterThan[Int]),
     valueGenerator = () => Random.nextInt)
-  val winningPlayer = new Game(new ConsolePlayer(X), new GPPlayer(O,tree)).play
-  println(s"The winner is: $winningPlayer")
+
+  override def fitnessFunction: FitnessFunction = { individual =>
+    val scores = for {
+      tree <- currentPopulation
+    } yield {
+      val winner = new Game(new GPPlayer(X, individual), new GPPlayer(O, tree)).play
+      winner match {
+        case X => 0
+        case Empty => 1
+        case O => 2
+      }
+    }
+    scores.sum.toDouble
+  }
 }
 
 sealed trait Value
+
 case object X extends Value
+
 case object O extends Value
+
 case object Empty extends Value
 
 trait Player {
   def readMove(board: List[Value]): Int
+
   def color: Value
+
   def isHuman: Boolean
 }
 
@@ -47,7 +76,7 @@ case class GPPlayer(color: Value, tree: Node[Int]) extends Player {
   override val isHuman = false
 
   override def readMove(board: List[Value]) = {
-    val params = board.zipWithIndex.map{ e => e._1 match {
+    val params = board.zipWithIndex.map { e => e._1 match {
       case Empty => (e._2.toString, 0)
       case v =>
         if (v == color)
