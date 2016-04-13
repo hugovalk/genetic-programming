@@ -46,4 +46,4 @@ The input for the game is a number (1 - 9), to select a square to play.
     -------
 
 Note: when playing in a Scala REPL you might not see the number you type. But just
-press enter. It will work. 
+press enter. It will work.
