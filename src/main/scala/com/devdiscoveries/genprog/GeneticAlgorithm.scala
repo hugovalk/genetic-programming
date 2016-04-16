@@ -8,7 +8,7 @@ import scala.math.Numeric
 trait GeneticAlgorithm[Individual] {
   /** Absolute number. 0 is perfect fitness */
   type Fitness = Double
-  type FitnessFunction = Individual => Fitness
+  type FitnessFunction = Population => RankedPopulation
   type Population = Seq[Individual]
   type RankedPopulation = Seq[(Individual, Fitness)]
 
@@ -20,27 +20,18 @@ trait GeneticAlgorithm[Individual] {
 
   def generateRandomIndividual: Individual
 
-  private var curPopulation: Population = Seq()
-
-  def currentPopulation = curPopulation
-
   def evolve(populationSize: Int, numberOfGenerations: Int = 100): Population = {
     val initialPopulation: Population = (1 to numberOfGenerations).map(_ => generateRandomIndividual)
-    (1 to numberOfGenerations).foldLeft(initialPopulation){(x, y) =>
+    (1 to numberOfGenerations).foldLeft(initialPopulation) { (x, y) =>
       println(s"Evolving generation $y")
-      val newPopulation = evolveNewGeneration(x)
-      curPopulation = newPopulation
-      newPopulation
+      evolveNewGeneration(x)
     }
   }
 
   def evolveNewGeneration(population: Population): Population = {
-    val fitnesses = population.map(fitnessFunction)
-    val sumOfFitnesses = fitnesses.sum
-    val normalizedFitnesses = fitnesses.map(_ / sumOfFitnesses)
-    val normalizedPopulation = population.zip(normalizedFitnesses)
-    val selectedParents = truncationParentSelection(normalizedPopulation)
-    val elite = selectElite(normalizedPopulation).map(_._1)
+    val rankedPopulation = fitnessFunction(population)
+    val selectedParents = truncationParentSelection(rankedPopulation)
+    val elite = selectElite(rankedPopulation).map(_._1)
     elite ++ (for {
       i <- elite.size until population.length
     } yield breed(selectedParents))
@@ -61,7 +52,6 @@ trait GeneticAlgorithm[Individual] {
 
   def truncationParentSelection(population: RankedPopulation): RankedPopulation =
     population.sortBy(_._2).take(population.length / 3)
-
 
 }
 
@@ -115,7 +105,7 @@ sealed trait Node[A] {
         case Operation((left, right), f) =>
           val childIndex = index - 1
           if (childIndex < left.length) Operation((left.replaceAt(childIndex, replacement), right), f)
-          else Operation((left, right.replaceAt(childIndex - left.length , replacement)), f)
+          else Operation((left, right.replaceAt(childIndex - left.length, replacement)), f)
         case _ => throw new IndexOutOfBoundsException(index.toString)
       }
   }
@@ -138,7 +128,7 @@ case class Param[A](name: String) extends Node[A] {
   override def compute(params: Map[String, A]): A =
     params.find(_._1 == name) match {
       case Some(p) => p._2
-      case None => throw new IllegalArgumentException("This parameter is not in the list.")
+      case None    => throw new IllegalArgumentException("This parameter is not in the list.")
     }
   override def length = 1
 }
@@ -163,7 +153,7 @@ object Operation {
   }
   def greaterThan[N](implicit n: Numeric[N]) = {
     import n._
-    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), (n1,n2) => if (n1.toDouble() > n2.toDouble()) n1 else n2)
+    (node1: Node[N], node2: Node[N]) => Operation[N]((node1, node2), (n1, n2) => if (n1.toDouble() > n2.toDouble()) n1 else n2)
   }
 }
 
@@ -191,6 +181,4 @@ trait GeneticProgrammingInterpreter[A] extends GeneticAlgorithm[Node[A]] {
     parent1.replaceAt(Random.nextInt(parent1.length), replacement)
   }
 }
-
-
 

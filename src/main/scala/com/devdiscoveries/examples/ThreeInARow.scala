@@ -1,16 +1,16 @@
 package com.devdiscoveries.examples
 
 import com.devdiscoveries.genprog.Operation._
-import com.devdiscoveries.genprog.{GeneticProgrammingInterpreter, Operation, Param, Node}
+import com.devdiscoveries.genprog.{ GeneticProgrammingInterpreter, Operation, Param, Node }
 
 import scala.io.StdIn
 import scala.util.Random
 
 /**
-  * Example game 'Three in a row". This game needs an integer
-  * input (between 1 - 9) and is therefore suitable as a genetic
-  * programming challenge.
-  */
+ * Example game 'Three in a row". This game needs an integer
+ * input (between 1 - 9) and is therefore suitable as a genetic
+ * programming challenge.
+ */
 object ThreeInARow extends App {
   //  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
   import Operation._
@@ -30,20 +30,35 @@ class ThreeInARowGPAlgorithm extends GeneticProgrammingInterpreter[Int] {
     Param("1"), Param("2"), Param("3"), Param("4"),
     Param("5"), Param("6"), Param("7"), Param("8")),
     operations = List(add[Int], subtract[Int], multiply[Int], greaterThan[Int]),
+    maxDepth = 50,
     valueGenerator = () => Random.nextInt)
 
-  override def fitnessFunction: FitnessFunction = { individual =>
-    val scores = for {
-      tree <- currentPopulation
-    } yield {
-      val winner = new Game(new GPPlayer(X, individual), new GPPlayer(O, tree)).play
-      winner match {
-        case X => 0
-        case Empty => 1
-        case O => 2
+  override def fitnessFunction: FitnessFunction = { population =>
+    var calculated: Map[Int, Double] = Map()
+    val indexedPopulation = population.zipWithIndex
+
+    def loop(curPop: Seq[(Node[Int], Int)]) = {
+      if (curPop.size > 1) {
+        curPop.tail.foreach { tree =>
+          val winner = new Game(new GPPlayer(X, curPop.head._1), new GPPlayer(O, tree._1)).play
+          winner match {
+            case X =>
+              val r = calculated.getOrElse(curPop.head._2, 0.0) + 2.0
+              calculated = calculated + (curPop.head._2 -> r)
+            case Empty =>
+              val r = calculated.getOrElse(curPop.head._2, 0.0) + 1.0
+              calculated = calculated + (curPop.head._2 -> r)
+              val r2 = calculated.getOrElse(tree._2, 0.0) + 1.0
+              calculated = calculated + (tree._2 -> r2)
+            case O =>
+              val r = calculated.getOrElse(tree._2, 0.0) + 2.0
+              calculated = calculated + (tree._2 -> r)
+          }
+        }
       }
     }
-    scores.sum.toDouble
+    loop(indexedPopulation)
+    indexedPopulation.map(e => (e._1, calculated.getOrElse(e._2, 0.0)))
   }
 }
 
@@ -76,14 +91,15 @@ case class GPPlayer(color: Value, tree: Node[Int]) extends Player {
   override val isHuman = false
 
   override def readMove(board: List[Value]) = {
-    val params = board.zipWithIndex.map { e => e._1 match {
-      case Empty => (e._2.toString, 0)
-      case v =>
-        if (v == color)
-          (e._2.toString, 1)
-        else
-          (e._2.toString, -1)
-    }
+    val params = board.zipWithIndex.map { e =>
+      e._1 match {
+        case Empty => (e._2.toString, 0)
+        case v =>
+          if (v == color)
+            (e._2.toString, 1)
+          else
+            (e._2.toString, -1)
+      }
     }.toMap
     Math.abs(tree.compute(params)) % 9 + 1
   }
@@ -143,8 +159,7 @@ class Game(playerOne: Player, playerTwo: Player) {
 
   def diagonals = List(
     List(board(0), board(4), board(8)),
-    List(board(2), board(4), board(6))
-  )
+    List(board(2), board(4), board(6)))
 
   def winner: Option[Value] = {
     def wins(v: Value): Boolean = {
@@ -172,8 +187,8 @@ class Game(playerOne: Player, playerTwo: Player) {
 
   def printRow(row: Seq[Value]) = {
     row.foreach {
-      case X => print("|X")
-      case O => print("|O")
+      case X     => print("|X")
+      case O     => print("|O")
       case Empty => print("| ")
     }
     println("|")
