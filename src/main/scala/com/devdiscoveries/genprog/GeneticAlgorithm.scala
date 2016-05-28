@@ -28,7 +28,10 @@ trait GeneticAlgorithm[Individual, Response[_]] {
 
   type RankPopulationFunction = GAOperation[Population, RankedPopulation]
 
-  def selectFittest: GAOperation[RankedPopulation, RankedPopulation]
+  def selectFittest: GAOperation[RankedPopulation, RankedPopulation] =
+    kleisli { rankedPopulation =>
+      rankedPopulation.sortBy(_._2).take(rankedPopulation.size / 3)
+    }
 
   def selectElite: GAOperation[RankedPopulation, Population]
 
@@ -64,8 +67,7 @@ trait GeneticAlgorithm[Individual, Response[_]] {
 }
 
 trait SingleThreadedGeneticAlgorithm[Individual] extends GeneticAlgorithm[Individual, Option] {
-
-
+  
   override implicit def lift[A](a: A): Option[A] = Some(a)
 
   override def selectParents: GAOperation[Population, (Individual, Individual)] =
@@ -89,11 +91,6 @@ trait SingleThreadedGeneticAlgorithm[Individual] extends GeneticAlgorithm[Indivi
         i <- Range(elite.size, populationSize)
       } yield breedNewIndividual.run(selectedParents).get
       elite.map(_ ++ children)
-    }
-
-  override def selectFittest: GAOperation[RankedPopulation, RankedPopulation] =
-    kleisli { rankedPopulation =>
-      rankedPopulation.sortBy(_._2).take(rankedPopulation.size / 3)
     }
 
   override def generateInitialPopulation(populationSize: Int): GAOperation[Unit, Population] =
