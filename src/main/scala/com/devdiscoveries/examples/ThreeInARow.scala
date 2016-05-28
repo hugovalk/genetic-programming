@@ -1,10 +1,12 @@
 package com.devdiscoveries.examples
 
 import com.devdiscoveries.genprog.Operation._
-import com.devdiscoveries.genprog.{ GeneticProgrammingInterpreter, Operation, Param, Node }
+import com.devdiscoveries.genprog.{GeneticProgramming, Param, Node}
 
 import scala.io.StdIn
 import scala.util.Random
+import scalaz._
+import Kleisli._
 
 /**
  * Example game 'Three in a row". This game needs an integer
@@ -13,7 +15,6 @@ import scala.util.Random
  */
 object ThreeInARow extends App {
   //  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
-  import Operation._
 
   val tree =
     Node.generateRandomTree[Int](params = List(Param("0"),
@@ -25,7 +26,7 @@ object ThreeInARow extends App {
   println(s"The winner is: $winningPlayer")
 }
 
-class ThreeInARowGPAlgorithm extends GeneticProgrammingInterpreter[Int] {
+class ThreeInARowGPAlgorithm extends GeneticProgramming[Int] {
   override def generateTree: Node[Int] = Node.generateRandomTree[Int](params = List(Param("0"),
     Param("1"), Param("2"), Param("3"), Param("4"),
     Param("5"), Param("6"), Param("7"), Param("8")),
@@ -33,33 +34,34 @@ class ThreeInARowGPAlgorithm extends GeneticProgrammingInterpreter[Int] {
     maxDepth = 50,
     valueGenerator = () => Random.nextInt)
 
-  override def fitnessFunction: FitnessFunction = { population =>
-    var calculated: Map[Int, Double] = Map()
-    val indexedPopulation = population.zipWithIndex
+  override def rankPopulation: RankPopulationFunction =
+    kleisli { population =>
+      var calculated: Map[Int, Double] = Map()
+      val indexedPopulation = population.zipWithIndex
 
-    def loop(curPop: Seq[(Node[Int], Int)]) = {
-      if (curPop.size > 1) {
-        curPop.tail.foreach { tree =>
-          val winner = new Game(new GPPlayer(X, curPop.head._1), new GPPlayer(O, tree._1)).play
-          winner match {
-            case X =>
-              val r = calculated.getOrElse(curPop.head._2, 0.0) + 2.0
-              calculated = calculated + (curPop.head._2 -> r)
-            case Empty =>
-              val r = calculated.getOrElse(curPop.head._2, 0.0) + 1.0
-              calculated = calculated + (curPop.head._2 -> r)
-              val r2 = calculated.getOrElse(tree._2, 0.0) + 1.0
-              calculated = calculated + (tree._2 -> r2)
-            case O =>
-              val r = calculated.getOrElse(tree._2, 0.0) + 2.0
-              calculated = calculated + (tree._2 -> r)
+      def loop(curPop: Seq[(Node[Int], Int)]) = {
+        if (curPop.size > 1) {
+          curPop.tail.foreach { tree =>
+            val winner = new Game(new GPPlayer(X, curPop.head._1), new GPPlayer(O, tree._1)).play
+            winner match {
+              case X =>
+                val r = calculated.getOrElse(curPop.head._2, 0.0) + 2.0
+                calculated = calculated + (curPop.head._2 -> r)
+              case Empty =>
+                val r = calculated.getOrElse(curPop.head._2, 0.0) + 1.0
+                calculated = calculated + (curPop.head._2 -> r)
+                val r2 = calculated.getOrElse(tree._2, 0.0) + 1.0
+                calculated = calculated + (tree._2 -> r2)
+              case O =>
+                val r = calculated.getOrElse(tree._2, 0.0) + 2.0
+                calculated = calculated + (tree._2 -> r)
+            }
           }
         }
       }
+      loop(indexedPopulation)
+      indexedPopulation.map(e => (e._1, calculated.getOrElse(e._2, 0.0)))
     }
-    loop(indexedPopulation)
-    indexedPopulation.map(e => (e._1, calculated.getOrElse(e._2, 0.0)))
-  }
 }
 
 sealed trait Value
