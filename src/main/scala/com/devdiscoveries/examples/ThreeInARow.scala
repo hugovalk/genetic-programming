@@ -1,18 +1,20 @@
 package com.devdiscoveries.examples
 
 import com.devdiscoveries.genprog.Operation._
-import com.devdiscoveries.genprog.{GeneticProgramming, Param, Node}
+import com.devdiscoveries.genprog.{ConcurrentGeneticProgrammingAlgorithn, SimpleGeneticProgrammingAlgorithm, Param, Node}
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.StdIn
 import scala.util.Random
 import scalaz._
 import Kleisli._
 
 /**
- * Example game 'Three in a row". This game needs an integer
- * input (between 1 - 9) and is therefore suitable as a genetic
- * programming challenge.
- */
+  * Example game 'Three in a row". This game needs an integer
+  * input (between 1 - 9) and is therefore suitable as a genetic
+  * programming challenge.
+  */
 object ThreeInARow extends App {
   //  val winningPlayer = new Game(new ConsolePlayer(X), new ConsolePlayer(O)).play
 
@@ -26,7 +28,7 @@ object ThreeInARow extends App {
   println(s"The winner is: $winningPlayer")
 }
 
-class ThreeInARowGPAlgorithm extends GeneticProgramming[Int] {
+class SimpleThreeInARowGPAlgorithm extends SimpleGeneticProgrammingAlgorithm[Int] {
   override def generateTree: Node[Int] = Node.generateRandomTree[Int](params = List(Param("0"),
     Param("1"), Param("2"), Param("3"), Param("4"),
     Param("5"), Param("6"), Param("7"), Param("8")),
@@ -61,6 +63,48 @@ class ThreeInARowGPAlgorithm extends GeneticProgramming[Int] {
       }
       loop(indexedPopulation)
       indexedPopulation.map(e => (e._1, calculated.getOrElse(e._2, 0.0)))
+    }
+}
+
+class ConcurrentThreeInARowGPAlgorithm extends ConcurrentGeneticProgrammingAlgorithn[Int] {
+  override def generateTree: Node[Int] = Node.generateRandomTree[Int](params = List(Param("0"),
+    Param("1"), Param("2"), Param("3"), Param("4"),
+    Param("5"), Param("6"), Param("7"), Param("8")),
+    operations = List(add[Int], subtract[Int], multiply[Int], greaterThan[Int]),
+    maxDepth = 50,
+    valueGenerator = () => Random.nextInt)
+
+  override def rankPopulation: RankPopulationFunction =
+    kleisli { population =>
+      def play(player1: (Node[Int], Int), player2: (Node[Int], Int)): Future[Seq[(Int, Double)]] = Future {
+        val winner = new Game(new GPPlayer(X, player1._1), new GPPlayer(O, player2._1)).play
+        winner match {
+          case X =>
+            Seq((player1._2, 2.0))
+          case Empty =>
+            Seq((player1._2, 1.0), (player2._2, 1.0))
+          case O =>
+            Seq((player2._2, 2.0))
+        }
+      }
+
+      def loop2(curPop: Seq[(Node[Int], Int)]): List[Future[Seq[(Int, Double)]]] = {
+        if (curPop.size > 1) {
+          val scores = Future.sequence(curPop.tail.map { node =>
+            play(curPop.head, node)
+          }).map(_.flatten)
+          scores :: loop2(curPop.tail)
+        } else
+          List()
+      }
+
+      val indexedPopulation = population.zipWithIndex
+      val scores = Future.sequence(loop2(indexedPopulation))
+      scores.map{scs =>
+        val groupedScores = scs.flatten.groupBy(_._1)
+        val calculated = groupedScores.map(s => (s._1, s._2.foldLeft(0.0)(_ + _._2)))
+        indexedPopulation.map(e => (e._1, calculated.getOrElse(e._2, 0.0)))
+      }
     }
 }
 
@@ -189,8 +233,8 @@ class Game(playerOne: Player, playerTwo: Player) {
 
   def printRow(row: Seq[Value]) = {
     row.foreach {
-      case X     => print("|X")
-      case O     => print("|O")
+      case X => print("|X")
+      case O => print("|O")
       case Empty => print("| ")
     }
     println("|")

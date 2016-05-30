@@ -1,8 +1,13 @@
 package com.devdiscoveries.genprog
 
+import com.devdiscoveries.genalg.{ConcurrentGeneticAlgorithm, SimpleGeneticAlgorithmInterpreter}
+
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.math.Numeric
 import scala.util.Random
 import scalaz._
+import Scalaz._
 import Kleisli._
 
 object Node {
@@ -116,9 +121,29 @@ case class Operation[A](nodes: (Node[A], Node[A]), f: (A, A) => A)
   override def length = 1 + nodes._1.length + nodes._2.length
 }
 
-trait GeneticProgramming[A] extends SingleThreadedGeneticAlgorithm[Node[A]] {
+trait SimpleGeneticProgrammingAlgorithm[A] extends SimpleGeneticAlgorithmInterpreter[Node[A]] {
 
-  override def generateRandomIndividual: Node[A] = generateTree
+  override def generateRandomIndividual: Option[Node[A]] = Some(generateTree)
+
+  def generateTree: Node[A]
+
+  override def mutate: GAOperation[Node[A], Node[A]] =
+    kleisli { individual =>
+      individual.replaceAt(Random.nextInt(individual.length), generateTree)
+    }
+
+  override def crossOver: GAOperation[(Node[A], Node[A]), Node[A]] =
+    kleisli { parents =>
+      val replacement = parents._2.childAtIndex(Random.nextInt(parents._2.length))
+      parents._1.replaceAt(Random.nextInt(parents._1.length), replacement)
+    }
+}
+
+trait ConcurrentGeneticProgrammingAlgorithn[A] extends ConcurrentGeneticAlgorithm[Node[A]] {
+  override def generateRandomIndividual: Future[Node[A]] =
+    Future {
+      generateTree
+    }
 
   def generateTree: Node[A]
 
