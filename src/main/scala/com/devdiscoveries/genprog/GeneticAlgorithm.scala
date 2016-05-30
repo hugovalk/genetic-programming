@@ -84,7 +84,7 @@ trait SingleThreadedGeneticAlgorithm[Individual] extends GeneticAlgorithm[Indivi
   }
 
   override def breed(populationSize: Int): GAOperation[RankedPopulation, Population] =
-    kleisli{rankedSelectedParents =>
+    kleisli { rankedSelectedParents =>
       val selectedParents = rankedSelectedParents.map(_._1)
       val elite = selectElite.run(rankedSelectedParents)
       val children = for {
@@ -94,7 +94,7 @@ trait SingleThreadedGeneticAlgorithm[Individual] extends GeneticAlgorithm[Indivi
     }
 
   override def generateInitialPopulation(populationSize: Int): GAOperation[Unit, Population] =
-    kleisli { (x: Unit) =>
+    kleisli[Option, Unit, Population] { (x: Unit) =>
       Some(Range(0, populationSize).map(_ => generateRandomIndividual).toSeq)
     }
 
