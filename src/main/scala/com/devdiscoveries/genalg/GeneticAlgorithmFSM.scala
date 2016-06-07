@@ -1,6 +1,6 @@
 package com.devdiscoveries.genalg
 
-import akka.actor.{FSM, Actor}
+import akka.actor.FSM
 
 
 
