@@ -22,15 +22,29 @@ After installing the Scala plugin in IntelliJ IDEA, you can can use the project 
 In the SBT console, you can run `console` to start a Scala REPL.
 Run the following commands to train an AI player and play the game:
 
-    > import com.devdiscoveries.examples._
-    > val gp = new ThreeInARowGPAlgorithm
-    > val best = gp.evolve(populationSize = 10, numberOfGenerations = 10).head
+    import com.devdiscoveries.examples._
+    import scalaz._
+    import Scalaz._
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.concurrent.Await
+    import scala.concurrent.duration._
+    val gp = new ConcurrentThreeInARowGPAlgorithm
 
-Now you can play against the computer:
+Now you can start training the algorithm with the following command:
 
-    > new Game(ConsolePlayer(X), GPPlayer(O, best)).play
+    val futureResults = gp.evolve(1000,100).run()
 
-The algorithm is very slow at this moment, so better start with a small population and a few generations :).
+Training will now start in the background. To check whether the calculation is complete, you run:
+
+    futureResults.isCompleted
+
+Or you just wait until CPU gets low again.
+
+To play:
+
+    val results = Await.result(futureResults, 2 seconds)
+    new Game(ConsolePlayer(X), GPPlayer(O, results.head)).play
+
 With some luck, you will see that your AI player has a tiny bit of 'intelligence'. It might try to complete a row
 or at least try to not play an occupied square.
 
